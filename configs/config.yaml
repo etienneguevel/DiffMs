@@ -4,6 +4,7 @@ defaults:
     - model : model_default
     - train : train_default
     - dataset : msg
+    - inference: inference_default
 
 hydra:
   job:
