@@ -7,7 +7,7 @@ import torch_geometric.utils
 import wandb
 from omegaconf import OmegaConf, open_dict
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem import DataStructs
 from torch_geometric.utils import to_dense_adj, to_dense_batch
 
@@ -155,7 +155,12 @@ def inchi_to_fingerprint(inchi: str, nbits: int = 2048, radius=3) -> np.ndarray:
 
     mol = Chem.MolFromInchi(inchi)
 
-    curr_fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius, nBits=nbits)
+    morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
+        radius=radius,
+        fpSize=nbits
+    )
+
+    curr_fp = morgan_gen.GetFingerprint(mol)
 
     fingerprint = np.zeros((0,), dtype=np.uint8)
     DataStructs.ConvertToNumpyArray(curr_fp, fingerprint)

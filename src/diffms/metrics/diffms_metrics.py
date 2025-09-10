@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from collections import Counter
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import rdMolDescriptors, rdFingerprintGenerator
 from rdkit.Chem import DataStructs
 from torchmetrics import Metric
 from typing import List
@@ -62,11 +62,17 @@ class K_TanimotoSimilarity(Metric):
         self.add_state("total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
 
     def update(self, generated_mols: List[Chem.Mol], true_mol: Chem.Mol):
-        true_fp = AllChem.GetMorganFingerprintAsBitVect(true_mol, 2, nBits=2048)
+        # Get the fingerprint
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
+            radius=2,
+            fpSize=2048
+        )
+        true_fp = morgan_gen.GetFingerprint(true_mol)
+
         max_sim = 0.0
         for mol in generated_mols[: self.k]:
             try:
-                gen_fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
+                gen_fp = morgan_gen.GetFingerprint(mol)
                 sim = DataStructs.TanimotoSimilarity(gen_fp, true_fp)
                 max_sim = max(max_sim, sim)
             except Exception:
@@ -89,11 +95,16 @@ class K_CosineSimilarity(Metric):
         self.add_state("total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
 
     def update(self, generated_mols: List[Chem.Mol], true_mol: Chem.Mol):
-        true_fp = AllChem.GetMorganFingerprintAsBitVect(true_mol, 2, nBits=2048)
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
+            radius=2,
+            fpSize=2048
+        )
+        true_fp = morgan_gen.GetFingerprint(true_mol)
+
         max_sim = 0.0
         for mol in generated_mols[: self.k]:
             try:
-                gen_fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=2048)
+                gen_fp = morgan_gen.GetFingerprint(mol)
                 sim = DataStructs.CosineSimilarity(gen_fp, true_fp)
                 max_sim = max(max_sim, sim)
             except Exception:

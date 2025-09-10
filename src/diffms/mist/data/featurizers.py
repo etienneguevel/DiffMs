@@ -20,8 +20,8 @@ from torch_geometric.data import Data, Batch
 
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType as BT
-from rdkit.Chem import AllChem, DataStructs
-from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
+from rdkit.Chem import DataStructs
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.rdMolDescriptors import GetMACCSKeysFingerprint
 
 from diffms import ROOT
@@ -181,6 +181,10 @@ class GraphFeaturizer(Featurizer):
 
         self.morgan_r = kwargs.get("morgan_r", 2)
         self.morgan_nbits = kwargs.get("morgan_nbits", 2048)
+        self.morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
+            radius=self.morgan_r,
+            fpSize=self.morgan_nbits
+        )
 
     def _encode(self, mol: data.Mol) -> str:
         """Encode graph into name"""
@@ -218,7 +222,9 @@ class GraphFeaturizer(Featurizer):
         edge_attr = edge_attr[permutation]
 
         x = F.one_hot(torch.tensor(type_idx), num_classes=len(TYPES)).float()
-        y = torch.tensor(np.asarray(GetMorganFingerprintAsBitVect(mol, self.morgan_r, nBits=self.morgan_nbits), dtype=np.int8)).unsqueeze(0)
+        y = torch.tensor(
+            np.asarray(self.morgan_gen.GetFingerprint(mol), dtype=np.int8)
+        ).unsqueeze(0)
 
         inchi = Chem.MolToInchi(mol)
 
@@ -288,8 +294,13 @@ class FingerprintFeaturizer(MolFeaturizer):
     def _get_morgan_fp_base(self, mol: data.Mol, nbits: int = 2048, radius=2):
         """get morgan fingeprprint"""
 
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
+            radius=radius,
+            fpSize=nbits
+        )
+
         def fp_fn(m):
-            return AllChem.GetMorganFingerprintAsBitVect(m, radius, nBits=nbits)
+            return morgan_gen.GetFingerprint(m)
 
         mol = mol.get_rdkit_mol()
         fingerprint = fp_fn(mol)
@@ -696,10 +707,15 @@ class PeakFormula(SpecFeaturizer):
             spec (data.Spectra): spec
 
         Returns:
-            dict:
+            dict: information about the specter
+                - frags
+                - intens
+                - ions
+                - root_form
+                - root_ion
         """
         
-        spec_name = spec.get_spec_name()
+        spec_name = self._encode(spec)
         subform_file = Path(self.spec_name_to_subform_file[spec_name])
 
         if not subform_file.exists():

@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
 from tqdm import tqdm
 
+from diffms import ROOT
 from diffms.mist import utils
 from diffms.mist.data import featurizers
 from diffms.mist.data.data import Spectra, Mol
@@ -39,7 +40,7 @@ def get_paired_spectra(
         Tuple[List[Spectra], List[Mol]]: _description_
     """
     # First get labels
-    compound_id_file = pd.read_csv(labels_file, sep="\t").astype(str)
+    compound_id_file = pd.read_csv(ROOT / labels_file, sep="\t").astype(str)
     name_to_formula = dict(compound_id_file[["spec", "formula"]].values)
 
     name_to_smiles = {}
@@ -56,10 +57,10 @@ def get_paired_spectra(
 
     # Note, loading has moved to the dataloader itself
     logging.info(f"Loading paired specs")
-    spec_folder = Path(spec_folder) if spec_folder is not None else None
+    spec_folder = ROOT / spec_folder if spec_folder else None
 
     # Resolve for full path
-    if spec_folder is not None and spec_folder.exists():
+    if spec_folder and spec_folder.exists():
         spectra_files = [Path(i).resolve() for i in spec_folder.glob("*.ms")]
     else:
         logging.info(

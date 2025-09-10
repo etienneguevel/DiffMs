@@ -7,7 +7,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from rdkit import Chem, RDLogger
-from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect
+from rdkit.Chem.rdFingerprintGenerator import GetMorganGenerator
 from rdkit.Chem.rdchem import BondType as BT
 from torch_geometric.data import Data, InMemoryDataset
 from tqdm import tqdm
@@ -75,7 +75,12 @@ def process_single_inchi(args):
         edge_index = edge_index[:, perm]
         edge_attr = edge_attr[perm]
         x = F.one_hot(torch.tensor(type_idx), num_classes=len(types)).float()
-        fp = GetMorganFingerprintAsBitVect(mol, morgan_r, nBits=morgan_nbits)
+
+        # Get the morgan fingerprint
+        morgan_gen = GetMorganGenerator(radius=morgan_r, fpsize=morgan_nbits)
+        fp = morgan_gen.GetFingerprint(mol)
+
+        # Do stuff
         y = torch.tensor(np.asarray(fp, dtype=np.int8)).unsqueeze(0)
         inchi_canonical = Chem.MolToInchi(mol)
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, idx=i, inchi=inchi_canonical)

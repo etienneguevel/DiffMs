@@ -38,7 +38,11 @@ class Spec2MolDataModule(MolecularDataModule):
 
         paired_featurizer = featurizers.PairedFeaturizer(
             spec_featurizer=featurizers.PeakFormula(**cfg.dataset),
-            mol_featurizer=featurizers.FingerprintFeaturizer(fp_names=['morgan4096'], **cfg.dataset),
+            mol_featurizer=featurizers.FingerprintFeaturizer(
+                fp_names=['morgan4096'],
+                **cfg.dataset,
+                includeChirality=False,
+            ),
             graph_featurizer=featurizers.GraphFeaturizer(**cfg.dataset),
         )
 
@@ -46,7 +50,7 @@ class Spec2MolDataModule(MolecularDataModule):
         spectra_mol_pairs = list(zip(*spectra_mol_pairs))
 
         # Redefine splitter s.t. this splits three times and remove subsetting
-        split_name, (train, val, test) = data_splitter.get_splits(spectra_mol_pairs)
+        _, (train, val, test) = data_splitter.get_splits(spectra_mol_pairs)
 
         # randomly shuffle test set with fixed seed
         random.seed(42)

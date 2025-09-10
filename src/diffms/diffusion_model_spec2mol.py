@@ -84,13 +84,15 @@ class Spec2MolDenoisingDiffusion(pl.LightningModule):
         self.extra_features = extra_features
         self.domain_features = domain_features
 
-        self.decoder = GraphTransformer(n_layers=cfg.model.n_layers,
-                                      input_dims=input_dims,
-                                      hidden_mlp_dims=cfg.model.hidden_mlp_dims,
-                                      hidden_dims=cfg.model.hidden_dims,
-                                      output_dims=output_dims,
-                                      act_fn_in=nn.ReLU(),
-                                      act_fn_out=nn.ReLU())
+        self.decoder = GraphTransformer(
+            n_layers=cfg.model.n_layers,
+            input_dims=input_dims,
+            hidden_mlp_dims=cfg.model.hidden_mlp_dims,
+            hidden_dims=cfg.model.hidden_dims,
+            output_dims=output_dims,
+            act_fn_in=nn.ReLU(),
+            act_fn_out=nn.ReLU()
+        )
 
         try:
             if cfg.general.decoder is not None:
