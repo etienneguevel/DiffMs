@@ -57,9 +57,21 @@ class Spec2MolDataModule(MolecularDataModule):
         random.shuffle(test)
 
         ms_datasets = {
-            'train': datasets.SpectraMolDataset(spectra_mol_list=train, featurizer=paired_featurizer, **cfg.dataset),
-            'val': datasets.SpectraMolDataset(spectra_mol_list=val, featurizer=paired_featurizer, **cfg.dataset),
-            'test': datasets.SpectraMolDataset(spectra_mol_list=test, featurizer=paired_featurizer, **cfg.dataset)
+            'train': datasets.SpectraMolDataset(
+                spectra_mol_list=train, 
+                featurizer=paired_featurizer, 
+                **cfg.dataset
+            ),
+            'val': datasets.SpectraMolDataset(
+                spectra_mol_list=val, 
+                featurizer=paired_featurizer, 
+                **cfg.dataset
+            ),
+            'test': datasets.SpectraMolDataset(
+                spectra_mol_list=test, 
+                featurizer=paired_featurizer, 
+                **cfg.dataset
+            )
         }
         super().__init__(cfg, ms_datasets)
 

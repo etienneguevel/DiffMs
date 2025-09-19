@@ -4,8 +4,9 @@ import pathlib
 import warnings
 import logging
 
-import torch
 import hydra
+import torch
+import pytorch_lightning as pl
 from omegaconf import DictConfig
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
@@ -135,7 +136,7 @@ def apply_decoder_finetuning(model, strategy):
     else:
         raise NotImplementedError(f'Unknown Finetune Strategy: {strategy}')
 
-def load_weights(model, path):
+def load_weights(model, path: str):
     """
     Loads only the weights from a checkpoint file into the model without loading the full Lightning module.
     
@@ -229,13 +230,19 @@ def main(cfg: DictConfig):
     callbacks = []
     callbacks.append(LearningRateMonitor(logging_interval='step'))
     if cfg.train.save_model: # TODO: More advanced checkpointing
-        checkpoint_callback = ModelCheckpoint(dirpath=f"checkpoints/{cfg.general.name}", # best (top-5) checkpoints
-                                              filename='{epoch}',
-                                              monitor='val/NLL',
-                                              save_top_k=5,
-                                              mode='min',
-                                              every_n_epochs=1)
-        last_ckpt_save = ModelCheckpoint(dirpath=f"checkpoints/{cfg.general.name}", filename='last', every_n_epochs=1) # most recent checkpoint
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=f"checkpoints/{cfg.general.name}", # best (top-5) checkpoints
+            filename='{epoch}',
+            monitor='val/NLL',
+            save_top_k=5,
+            mode='min',
+            every_n_epochs=1
+        )
+        last_ckpt_save = ModelCheckpoint(
+            dirpath=f"checkpoints/{cfg.general.name}",
+            filename='last',
+            every_n_epochs=1
+        ) # most recent checkpoint
         callbacks.append(last_ckpt_save)
         callbacks.append(checkpoint_callback)
 

@@ -8,7 +8,7 @@ wandb_name: 'mass_spec_exp'
 gpus: 1                     # Multi-gpu is not implemented on this branch
 
 decoder: 'models/checkpoints/decoder.ckpt' # path to pretrained decoder
-encoder: 'models/checkpoints/encoder_msg.ckpt' # path to pretrained encoder
+encoder: 'models/checkpoints/encoder_msg.pt' # path to pretrained encoder
 
 resume: null
 test_only: null
