@@ -78,8 +78,6 @@ def get_paired_spectra(
 
     # Just added!
     spectra_files = [i for i in spectra_files if i.stem in name_to_formula]
-
-
     spectra_names = [get_name(spectra_file) for spectra_file in spectra_files]
     spectra_formulas = [name_to_formula[spectra_name] for spectra_name in spectra_names]
     spectra_instruments = [
@@ -163,11 +161,11 @@ class SpectraMolDataset(Dataset):
         """
         super().__init__()
         spectra_list, mol_list = list(zip(*spectra_mol_list))
-        self.spectra_list = np.array(spectra_list)
-        self.mol_list = np.array(mol_list)
-        self.smi_list = np.array([mol.get_smiles() for mol in self.mol_list])
-        self.inchikey_list = np.array([mol.get_inchikey() for mol in self.mol_list])
-        self.orig_len = len(self.mol_list)
+        self.spectra_arr = np.array(spectra_list)
+        self.mol_arr = np.array(mol_list)
+        self.smi_arr = np.array([mol.get_smiles() for mol in mol_list])
+        self.inchikey_arr = np.array([mol.get_inchikey() for mol in mol_list])
+        self.orig_len = len(mol_list)
         self.len = len(self.mol_list)
 
         # Extract all chem formulas
@@ -178,7 +176,7 @@ class SpectraMolDataset(Dataset):
 
         # Verify same length
         # For examples where we have mismatches, we should use None
-        assert len(self.spectra_list) == len(self.mol_list)
+        assert len(self.spectra_arr) == len(self.mol_arr)
 
         # Store paired featurizer
         self.featurizer = featurizer
@@ -261,21 +259,21 @@ class SpectraMolDataset(Dataset):
             replace=True,
         )
 
-        new_specs = self.aux_specs[aux_inds].tolist()
-        new_mols = self.aux_mols[aux_inds].tolist()
+        new_specs = self.aux_specs[aux_inds]
+        new_mols = self.aux_mols[aux_inds]
 
-        orig_specs = self.spectra_list[: self.orig_len].tolist()
-        orig_mols = self.mol_list[: self.orig_len].tolist()
+        orig_specs = self.spectra_arr[: self.orig_len]
+        orig_mols = self.mol_arr[: self.orig_len]
 
-        self.mol_list = np.array(orig_mols + new_mols)
-        self.spectra_list = np.array(orig_specs + new_specs)
+        self.mol_arr = np.concatenate((orig_mols, new_mols))
+        self.spectra_arr = np.concatenate((orig_specs, new_specs))
 
         # Reset the self statistics
-        self.smi_list = np.array([mol.get_smiles() for mol in self.mol_list])
-        self.inchikey_list = np.array([mol.get_inchikey() for mol in self.mol_list])
+        self.smi_arr = np.array([mol.get_smiles() for mol in self.mol_arr])
+        self.inchikey_arr = np.array([mol.get_inchikey() for mol in self.mol_arr])
         # Extract all chem formulas
         self.chem_formulas = set()
-        for spec in self.spectra_list:
+        for spec in self.spectra_arr:
             formula = spec.get_spectra_formula()
             self.chem_formulas.add(formula)
 
@@ -290,9 +288,9 @@ class SpectraMolDataset(Dataset):
             )
             self.len = self.num_to_sample + self.orig_len
 
-    def get_spectra_list(self) -> List[Spectra]:
+    def get_spectra_list(self) -> np.array[Spectra]:
         """get_spectra_list."""
-        return self.spectra_list
+        return self.spectra_arr
 
     def get_featurizer(self) -> featurizers.PairedFeaturizer:
         """get_spectra_list."""
@@ -304,19 +302,19 @@ class SpectraMolDataset(Dataset):
 
     def get_spectra_names(self) -> List[str]:
         """get_spectra_names."""
-        return [i.spectra_name for i in self.spectra_list]
+        return [i.spectra_name for i in self.spectra_arr]
 
-    def get_mol_list(self) -> List[Mol]:
+    def get_mol_list(self) -> np.array[Mol]:
         """get_mol_list."""
-        return self.mol_list
+        return self.mol_arr
 
-    def get_smi_list(self) -> List[str]:
+    def get_smi_list(self) -> np.array[str]:
         """Get the smiles list associated with data"""
-        return self.smi_list
+        return self.smi_arr
 
-    def get_inchikey_list(self) -> List[str]:
+    def get_inchikey_list(self) -> np.array[str]:
         """Get the inchikey list associated with data"""
-        return self.inchikey_list
+        return self.inchikey_arr
 
     def get_all_formulas(self) -> Set[str]:
         """get_all_formulas.
@@ -328,7 +326,6 @@ class SpectraMolDataset(Dataset):
         return self.chem_formulas
 
     def __len__(self) -> int:
-        """__len__."""
         return self.len
 
     def __getitem__(self, idx: int) -> dict:
@@ -340,12 +337,18 @@ class SpectraMolDataset(Dataset):
         Returns:
             dict: _description_
         """
-        mol = self.mol_list[idx]
-        spec = self.spectra_list[idx]
+        mol = self.mol_arr[idx]
+        spec = self.spectra_arr[idx]
 
-        mol_features = self.featurizer.featurize_mol(mol, train_mode=self.train_mode)
-        spec_features = self.featurizer.featurize_spec(spec, train_mode=self.train_mode)
-        graph_features = self.featurizer.featurize_graph(mol, train_mode=self.train_mode)
+        mol_features = self.featurizer.featurize_mol(
+            mol, train_mode=self.train_mode
+        )
+        spec_features = self.featurizer.featurize_spec(
+            spec, train_mode=self.train_mode
+        )
+        graph_features = self.featurizer.featurize_graph(
+            mol, train_mode=self.train_mode
+        )
 
         return {
             "spec": [spec_features],
@@ -654,7 +657,10 @@ def _collate_pairs(
     return base_dict
 
 def _collate_pairs_graph(
-    input_batch: List[dict], mol_collate_fn: Callable, spec_collate_fn: Callable, graph_collate_fn: Callable
+    input_batch: List[dict],
+    mol_collate_fn: Callable,
+    spec_collate_fn: Callable,
+    graph_collate_fn: Callable
 ) -> dict:
     """_collate_pairs
 
