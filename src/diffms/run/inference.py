@@ -87,7 +87,7 @@ def main(cfg: DictConfig):
     model = load_weights(model, weight_path)
 
     # Init the dataloader
-    dataloader = datamodule.test_dataloader()
+    dataloader = datamodule.train_dataloader()
 
     # Start itering over the batches
     device = cfg.inference.device

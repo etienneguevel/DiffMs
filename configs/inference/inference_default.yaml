@@ -1,4 +1,4 @@
-device: "cuda:2"
+device: "cuda:4"
 num_samples: 500
 num_gen: 100
-save_dir: "examples/test"
+save_dir: "examples/train_23_09_2025"
