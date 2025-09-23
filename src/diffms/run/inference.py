@@ -24,22 +24,23 @@ cfg_dir = str(ROOT / "configs")
 
 def move_batch_to_device(batch, device):
     batch = {
-        k: v.to(device) if isinstance(v, torch.Tensor) else v
-        for k, v in batch.items()
+        k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in batch.items()
     }
 
     return batch
+
 
 def move_data_to_device(data, device):
     for attr in vars(data)["_store"]:
         if isinstance(x := getattr(data, attr), torch.Tensor):
             setattr(data, attr, x.to(device))
-    
+
     return data
+
 
 @hydra.main(version_base="1.3", config_path=cfg_dir, config_name="config")
 def main(cfg: DictConfig):
-    RDLogger.DisableLog('rdApp.warning')
+    RDLogger.DisableLog("rdApp.warning")
 
     dataset_config = cfg["dataset"]
     # TODO: modify the dataset in order to take any mols
@@ -48,24 +49,32 @@ def main(cfg: DictConfig):
     domain_features = ExtraMolecularFeatures(dataset_infos=dataset_infos)
 
     if cfg.model.extra_features:
-        extra_features = ExtraFeatures(cfg.model.extra_features, dataset_info=dataset_infos)
+        extra_features = ExtraFeatures(
+            cfg.model.extra_features, dataset_info=dataset_infos
+        )
     else:
         extra_features = DummyExtraFeatures()
 
-    dataset_infos.compute_input_output_dims(datamodule=datamodule, extra_features=extra_features, domain_features=domain_features)
+    dataset_infos.compute_input_output_dims(
+        datamodule=datamodule,
+        extra_features=extra_features,
+        domain_features=domain_features,
+    )
 
     logging.info("Dataset infos:", dataset_infos.output_dims)
 
     # Get the other kwargs
     train_metrics = TrainMolecularMetricsDiscrete(dataset_infos)
-    visualization_tools = MolecularVisualization(cfg.dataset.remove_h, dataset_infos=dataset_infos)
+    visualization_tools = MolecularVisualization(
+        cfg.dataset.remove_h, dataset_infos=dataset_infos
+    )
 
     model_kwargs = {
-        'dataset_infos': dataset_infos,
-        'train_metrics': train_metrics,
-        'visualization_tools': visualization_tools,
-        'extra_features': extra_features, 
-        'domain_features': domain_features,
+        "dataset_infos": dataset_infos,
+        "train_metrics": train_metrics,
+        "visualization_tools": visualization_tools,
+        "extra_features": extra_features,
+        "domain_features": domain_features,
     }
 
     # Init the model
@@ -92,23 +101,23 @@ def main(cfg: DictConfig):
     for i, b in enumerate(dataloader):
         logging.info(f"Treating batch {i}")
         b = move_batch_to_device(b, device)
-        
+
         with torch.no_grad():
             output, aux = model.encoder(b)
-        
+
         # Do the data modification
         data = b["graph"]
-        if model.merge == 'mist_fp':
+        if model.merge == "mist_fp":
             data.y = aux["int_preds"][-1]
-        if model.merge == 'merge-encoder_output-linear':
-            encoder_output = aux['h0']
+        if model.merge == "merge-encoder_output-linear":
+            encoder_output = aux["h0"]
             data.y = model.merge_function(encoder_output)
-        elif model.merge == 'merge-encoder_output-mlp':
-            encoder_output = aux['h0']
+        elif model.merge == "merge-encoder_output-mlp":
+            encoder_output = aux["h0"]
             data.y = model.merge_function(encoder_output)
-        elif model.merge == 'downproject_4096':
+        elif model.merge == "downproject_4096":
             data.y = model.merge_function(output)
-        
+
         data = move_data_to_device(data, device)
 
         # Init the lists
@@ -117,7 +126,7 @@ def main(cfg: DictConfig):
             for idx in range(len(data))
         ]
         pmols = [list() for _ in range(len(data))]
-        
+
         # Generate the molecules
         for _ in tqdm(range(cfg.inference.num_gen), desc="Generating predictions"):
             for idx, mol in enumerate(model.sample_batch(data)):
@@ -130,24 +139,25 @@ def main(cfg: DictConfig):
         # Write the files
         result_dir = ROOT / cfg.inference.save_dir
         os.makedirs(result_dir, exist_ok=True)
-        
+
         true_mol_path = result_dir / "true.pkl"
         with open(true_mol_path, "wb") as f:
             print(f"saving the true mols at {true_mol_path}")
             pickle.dump(true_mols, f)
-        
+
         pred_mol_path = result_dir / "pred.pkl"
         with open(pred_mol_path, "wb") as f:
-            print(f"saving the predicted mols at {result_dir /  'pred.pkl'}")
+            print(f"saving the predicted mols at {result_dir / 'pred.pkl'}")
             pickle.dump(pred_mols, f)
 
         # Break when the limit is hitten
         if len(true_mols) > num_samples:
             break
-    
+
         # Clean the temp variables
         del output, aux, data, b
         torch.cuda.empty_cache()
+
 
 if __name__ == "__main__":
     main()

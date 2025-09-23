@@ -71,7 +71,6 @@ class FourierFeaturizer(IntFeaturizer):
     """
 
     def __init__(self):
-
         num_freqs = int(np.ceil(np.log2(self.MAX_COUNT_INT))) + 2
         # ^ need at least this many to ensure that the whole input range can be represented on the half circle.
 
@@ -112,7 +111,6 @@ class FourierFeaturizerSines(IntFeaturizer):
     """
 
     def __init__(self):
-
         num_freqs = int(np.ceil(np.log2(self.MAX_COUNT_INT))) + 2
         # ^ need at least this many to ensure that the whole input range can be represented on the half circle.
 
@@ -148,7 +146,6 @@ class FourierFeaturizerAbsoluteSines(IntFeaturizer):
     """
 
     def __init__(self):
-
         num_freqs = int(np.ceil(np.log2(self.MAX_COUNT_INT))) + 2
 
         freqs = (0.5 ** torch.arange(num_freqs, dtype=torch.float32))[2:]
@@ -183,7 +180,6 @@ class FourierFeaturizerPosCos(IntFeaturizer):
     """
 
     def __init__(self, num_funcs=9):
-
         # Variable
         self.num_funcs = num_funcs
 

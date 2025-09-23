@@ -1,4 +1,5 @@
-""" datasets.py """
+"""datasets.py"""
+
 import h5py
 import logging
 from functools import partial
@@ -21,7 +22,7 @@ from diffms.mist.data.data import Spectra, Mol
 
 def get_paired_spectra(
     labels_file: str,
-    spec_folder: str = None, 
+    spec_folder: str = None,
     max_count: Optional[int] = None,
     allow_none_smiles: bool = False,
     prog_bars: bool = True,
@@ -56,7 +57,7 @@ def get_paired_spectra(
         name_to_instrument = dict(compound_id_file[["spec", "instrument"]].values)
 
     # Note, loading has moved to the dataloader itself
-    logging.info(f"Loading paired specs")
+    logging.info("Loading paired specs")
     spec_folder = ROOT / spec_folder if spec_folder else None
 
     # Resolve for full path
@@ -84,7 +85,7 @@ def get_paired_spectra(
         name_to_instrument.get(spectra_name, "") for spectra_name in spectra_names
     ]
 
-    logging.info(f"Converting paired samples into Spectra objects")
+    logging.info("Converting paired samples into Spectra objects")
 
     tq = tqdm if prog_bars else lambda x: x
 
@@ -130,7 +131,7 @@ def get_paired_spectra(
     for spec, mol in zip(spectra_list, mol_list):
         if mol is not None:
             for atom in mol.get_rdkit_mol().GetAtoms():
-                if atom.GetSymbol() not in ['C', 'O', 'P', 'N', 'S', 'Cl', 'F', 'H']:
+                if atom.GetSymbol() not in ["C", "O", "P", "N", "S", "Cl", "F", "H"]:
                     break
             else:
                 updated_spectra_list.append(spec)
@@ -340,12 +341,8 @@ class SpectraMolDataset(Dataset):
         mol = self.mol_arr[idx]
         spec = self.spectra_arr[idx]
 
-        mol_features = self.featurizer.featurize_mol(
-            mol, train_mode=self.train_mode
-        )
-        spec_features = self.featurizer.featurize_spec(
-            spec, train_mode=self.train_mode
-        )
+        mol_features = self.featurizer.featurize_mol(mol, train_mode=self.train_mode)
+        spec_features = self.featurizer.featurize_spec(spec, train_mode=self.train_mode)
         graph_features = self.featurizer.featurize_graph(
             mol, train_mode=self.train_mode
         )
@@ -374,7 +371,6 @@ class SpectraMolMismatchHDFDataset(SpectraMolDataset):
         featurizer: featurizers.PairedFeaturizer,
         **kwargs,
     ):
-
         """__init__.
 
         Args:
@@ -481,7 +477,6 @@ class SpectraMolMismatchHDFDataset(SpectraMolDataset):
             # Draw FPs from isomers weighted by tani similarity to targ
             # Check for forward upsample
             if exclude_idx >= self.orig_len and self.forward_labels is not None:
-
                 # Randomly sample from all fps (avoid redoing sampling)
                 # Deviates from original implementation that used hard sampling
                 # for contrastive decoys as well. Changed for simplicity
@@ -656,11 +651,12 @@ def _collate_pairs(
 
     return base_dict
 
+
 def _collate_pairs_graph(
     input_batch: List[dict],
     mol_collate_fn: Callable,
     spec_collate_fn: Callable,
-    graph_collate_fn: Callable
+    graph_collate_fn: Callable,
 ) -> dict:
     """_collate_pairs
 
@@ -728,6 +724,7 @@ def _collate_pairs_graph(
     base_dict["graph"] = graph_batch
 
     return base_dict
+
 
 def get_paired_loader_graph(
     dataset: SpectraMolDataset,

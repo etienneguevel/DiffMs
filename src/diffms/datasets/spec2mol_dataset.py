@@ -8,7 +8,10 @@ from torch_geometric.loader import DataLoader
 
 import diffms.utils as utils
 from diffms.datasets.abstract_dataset import (
-    AbstractDatasetInfos, MolecularDataModule, ATOM_TO_VALENCY, ATOM_TO_WEIGHT
+    AbstractDatasetInfos,
+    MolecularDataModule,
+    ATOM_TO_VALENCY,
+    ATOM_TO_WEIGHT,
 )
 from diffms import ROOT
 from diffms.mist.data import datasets, splitter, featurizers
@@ -21,7 +24,8 @@ def to_list(value: Any) -> Sequence:
     else:
         return [value]
 
-atom_decoder = ['C', 'O', 'P', 'N', 'S', 'Cl', 'F', 'H']
+
+atom_decoder = ["C", "O", "P", "N", "S", "Cl", "F", "H"]
 valency = [ATOM_TO_VALENCY.get(atom, 0) for atom in atom_decoder]
 
 
@@ -31,15 +35,15 @@ class Spec2MolDataModule(MolecularDataModule):
         self.datadir = ROOT / cfg.dataset.datadir
         self.filter_dataset = cfg.dataset.filter
         self.train_smiles = []
-        
+
         data_splitter = splitter.PresetSpectraSplitter(
-            split_file = ROOT / cfg.dataset.split_file
+            split_file=ROOT / cfg.dataset.split_file
         )
 
         paired_featurizer = featurizers.PairedFeaturizer(
             spec_featurizer=featurizers.PeakFormula(**cfg.dataset),
             mol_featurizer=featurizers.FingerprintFeaturizer(
-                fp_names=['morgan4096'],
+                fp_names=["morgan4096"],
                 **cfg.dataset,
                 includeChirality=False,
             ),
@@ -57,41 +61,49 @@ class Spec2MolDataModule(MolecularDataModule):
         random.shuffle(test)
 
         ms_datasets = {
-            'train': datasets.SpectraMolDataset(
-                spectra_mol_list=train, 
-                featurizer=paired_featurizer, 
-                **cfg.dataset
+            "train": datasets.SpectraMolDataset(
+                spectra_mol_list=train, featurizer=paired_featurizer, **cfg.dataset
             ),
-            'val': datasets.SpectraMolDataset(
-                spectra_mol_list=val, 
-                featurizer=paired_featurizer, 
-                **cfg.dataset
+            "val": datasets.SpectraMolDataset(
+                spectra_mol_list=val, featurizer=paired_featurizer, **cfg.dataset
             ),
-            'test': datasets.SpectraMolDataset(
-                spectra_mol_list=test, 
-                featurizer=paired_featurizer, 
-                **cfg.dataset
-            )
+            "test": datasets.SpectraMolDataset(
+                spectra_mol_list=test, featurizer=paired_featurizer, **cfg.dataset
+            ),
         }
         super().__init__(cfg, ms_datasets)
 
     def train_dataloader(self) -> DataLoader:
-        return get_paired_loader_graph(self.train_dataset, shuffle=True, batch_size=self.batch_size, **self.kwargs)
+        return get_paired_loader_graph(
+            self.train_dataset, shuffle=True, batch_size=self.batch_size, **self.kwargs
+        )
 
     def val_dataloader(self) -> DataLoader:
-        return get_paired_loader_graph(self.val_dataset, shuffle=False, batch_size=self.eval_batch_size, **self.kwargs)
-    
+        return get_paired_loader_graph(
+            self.val_dataset,
+            shuffle=False,
+            batch_size=self.eval_batch_size,
+            **self.kwargs,
+        )
+
     def test_dataloader(self) -> DataLoader:
-        return get_paired_loader_graph(self.test_dataset, shuffle=False, batch_size=self.eval_batch_size, **self.kwargs)
-    
+        return get_paired_loader_graph(
+            self.test_dataset,
+            shuffle=False,
+            batch_size=self.eval_batch_size,
+            **self.kwargs,
+        )
+
     def valency_count(self, max_n_nodes):
-        valencies = torch.zeros(3 * max_n_nodes - 2)   # Max valency possible if everything is connected
+        valencies = torch.zeros(
+            3 * max_n_nodes - 2
+        )  # Max valency possible if everything is connected
 
         # No bond, single bond, double bond, triple bond, aromatic bond
         multiplier = torch.tensor([0, 1, 2, 3, 1.5])
 
         for batch in self.train_dataloader():
-            data = batch['graph']
+            data = batch["graph"]
             n = data.x.shape[0]
 
             for atom in range(n):
@@ -101,47 +113,47 @@ class Spec2MolDataModule(MolecularDataModule):
                 valencies[valency.long().item()] += 1
         valencies = valencies / valencies.sum()
         return valencies
-    
+
     def node_counts(self, max_nodes_possible=150):
         all_counts = torch.zeros(max_nodes_possible)
         for loader in [self.train_dataloader(), self.val_dataloader()]:
             for batch in loader:
-                data = batch['graph']
+                data = batch["graph"]
                 unique, counts = torch.unique(data.batch, return_counts=True)
                 for count in counts:
                     all_counts[count] += 1
         max_index = max(all_counts.nonzero())
-        all_counts = all_counts[:max_index + 1]
+        all_counts = all_counts[: max_index + 1]
         all_counts = all_counts / all_counts.sum()
         return all_counts
 
     def node_types(self):
         num_classes = None
         for batch in self.train_dataloader():
-            data = batch['graph']
+            data = batch["graph"]
             num_classes = data.x.shape[1]
             break
 
         counts = torch.zeros(num_classes)
 
         for i, batch in enumerate(self.train_dataloader()):
-            data = batch['graph']
+            data = batch["graph"]
             counts += data.x.sum(dim=0)
 
         counts = counts / counts.sum()
         return counts
-    
+
     def edge_counts(self):
         num_classes = None
         for batch in self.train_dataloader():
-            data = batch['graph']
+            data = batch["graph"]
             num_classes = data.edge_attr.shape[1]
             break
 
         d = torch.zeros(num_classes, dtype=torch.float)
 
         for i, batch in enumerate(self.train_dataloader()):
-            data = batch['graph']
+            data = batch["graph"]
             unique, counts = torch.unique(data.batch, return_counts=True)
 
             all_pairs = 0
@@ -162,39 +174,41 @@ class Spec2MolDataModule(MolecularDataModule):
 
 class Spec2MolDatasetInfos(AbstractDatasetInfos):
     def __init__(self, datamodule, cfg, recompute_statistics=False, meta=None):
-        self.name = 'canopus'
+        self.name = "canopus"
         self.input_dims = None
         self.output_dims = None
         self.remove_h = False
 
         self.atom_decoder = atom_decoder
         self.atom_encoder = {atom: i for i, atom in enumerate(self.atom_decoder)}
-        self.atom_weights = {i: ATOM_TO_WEIGHT.get(atom, 0) for i, atom in enumerate(self.atom_decoder)}
+        self.atom_weights = {
+            i: ATOM_TO_WEIGHT.get(atom, 0) for i, atom in enumerate(self.atom_decoder)
+        }
         self.valencies = valency
         self.num_atom_types = len(self.atom_decoder)
         self.max_weight = max(self.atom_weights.values())
         self._root_path = ROOT / cfg.dataset.datadir
 
         meta_files = dict(
-            n_nodes=self._root_path / 'n_counts.txt',
-            node_types=self._root_path / 'atom_types.txt',
-            edge_types=self._root_path / 'edge_types.txt',
-            valency_distribution=self._root_path / 'valencies.txt'
+            n_nodes=self._root_path / "n_counts.txt",
+            node_types=self._root_path / "atom_types.txt",
+            edge_types=self._root_path / "edge_types.txt",
+            valency_distribution=self._root_path / "valencies.txt",
         )
 
         if cfg.dataset.stats_dir:
             meta_read = dict(
-                n_nodes=self._root_path / 'n_counts.txt',
-                node_types=f'{cfg.dataset.stats_dir}/atom_types.txt',
-                edge_types=f'{cfg.dataset.stats_dir}/edge_types.txt',
-                valency_distribution=self._root_path / 'valencies.txt'
+                n_nodes=self._root_path / "n_counts.txt",
+                node_types=f"{cfg.dataset.stats_dir}/atom_types.txt",
+                edge_types=f"{cfg.dataset.stats_dir}/edge_types.txt",
+                valency_distribution=self._root_path / "valencies.txt",
             )
         else:
             meta_read = dict(
-                n_nodes=self._root_path / 'n_counts.txt',
-                node_types=self._root_path / 'atom_types.txt',
-                edge_types=self._root_path / 'edge_types.txt',
-                valency_distribution=self._root_path / 'valencies.txt'
+                n_nodes=self._root_path / "n_counts.txt",
+                node_types=self._root_path / "atom_types.txt",
+                edge_types=self._root_path / "edge_types.txt",
+                valency_distribution=self._root_path / "valencies.txt",
             )
 
         self.n_nodes = None
@@ -203,7 +217,12 @@ class Spec2MolDatasetInfos(AbstractDatasetInfos):
         self.valency_distribution = None
 
         if meta is None:
-            meta = dict(n_nodes=None, node_types=None, edge_types=None, valency_distribution=None)
+            meta = dict(
+                n_nodes=None,
+                node_types=None,
+                edge_types=None,
+                valency_distribution=None,
+            )
         assert set(meta.keys()) == set(meta_files.keys())
 
         for k, v in meta_read.items():
@@ -219,7 +238,7 @@ class Spec2MolDatasetInfos(AbstractDatasetInfos):
             np.savetxt(meta_files["n_nodes"], self.n_nodes.numpy())
             self.max_n_nodes = len(self.n_nodes) - 1
         if recompute_statistics or self.node_types is None:
-            self.node_types = datamodule.node_types()                                     # There are no node types
+            self.node_types = datamodule.node_types()  # There are no node types
             print("Distribution of node types", self.node_types)
             np.savetxt(meta_files["node_types"], self.node_types.numpy())
 
@@ -232,29 +251,42 @@ class Spec2MolDatasetInfos(AbstractDatasetInfos):
             print("Distribution of the valencies", valencies)
             np.savetxt(meta_files["valency_distribution"], valencies.numpy())
             self.valency_distribution = valencies
-        
+
         self.complete_infos(n_nodes=self.n_nodes, node_types=self.node_types)
 
     def compute_input_output_dims(self, datamodule, extra_features, domain_features):
-        example_batch = next(iter(datamodule.train_dataloader()))['graph']
-        ex_dense, node_mask = utils.to_dense(example_batch.x, example_batch.edge_index, example_batch.edge_attr,
-                                             example_batch.batch)
-        example_data = {'X_t': ex_dense.X, 'E_t': ex_dense.E, 'y_t': example_batch['y'], 'node_mask': node_mask}
+        example_batch = next(iter(datamodule.train_dataloader()))["graph"]
+        ex_dense, node_mask = utils.to_dense(
+            example_batch.x,
+            example_batch.edge_index,
+            example_batch.edge_attr,
+            example_batch.batch,
+        )
+        example_data = {
+            "X_t": ex_dense.X,
+            "E_t": ex_dense.E,
+            "y_t": example_batch["y"],
+            "node_mask": node_mask,
+        }
 
-        self.input_dims = {'X': example_batch['x'].size(1),
-                           'E': example_batch['edge_attr'].size(1),
-                           'y': example_batch['y'].size(1) + 1}      # + 1 due to time conditioning
+        self.input_dims = {
+            "X": example_batch["x"].size(1),
+            "E": example_batch["edge_attr"].size(1),
+            "y": example_batch["y"].size(1) + 1,
+        }  # + 1 due to time conditioning
 
         ex_extra_feat = extra_features(example_data)
-        self.input_dims['X'] += ex_extra_feat.X.size(-1)
-        self.input_dims['E'] += ex_extra_feat.E.size(-1)
-        self.input_dims['y'] += ex_extra_feat.y.size(-1)
+        self.input_dims["X"] += ex_extra_feat.X.size(-1)
+        self.input_dims["E"] += ex_extra_feat.E.size(-1)
+        self.input_dims["y"] += ex_extra_feat.y.size(-1)
 
         ex_extra_molecular_feat = domain_features(example_data)
-        self.input_dims['X'] += ex_extra_molecular_feat.X.size(-1)
-        self.input_dims['E'] += ex_extra_molecular_feat.E.size(-1)
-        self.input_dims['y'] += ex_extra_molecular_feat.y.size(-1)
+        self.input_dims["X"] += ex_extra_molecular_feat.X.size(-1)
+        self.input_dims["E"] += ex_extra_molecular_feat.E.size(-1)
+        self.input_dims["y"] += ex_extra_molecular_feat.y.size(-1)
 
-        self.output_dims = {'X': example_batch['x'].size(1),
-                            'E': example_batch['edge_attr'].size(1),
-                            'y': example_batch['y'].size(1)}
+        self.output_dims = {
+            "X": example_batch["x"].size(1),
+            "E": example_batch["edge_attr"].size(1),
+            "y": example_batch["y"].size(1),
+        }

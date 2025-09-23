@@ -55,7 +55,9 @@ class MolecularVisualization:
             mol = None
         return mol
 
-    def visualize(self, path: str, molecules: list, num_molecules_to_visualize: int, log='graph'):
+    def visualize(
+        self, path: str, molecules: list, num_molecules_to_visualize: int, log="graph"
+    ):
         # define path to save figures
         if not os.path.exists(path):
             os.makedirs(path)
@@ -65,9 +67,9 @@ class MolecularVisualization:
         if num_molecules_to_visualize > len(molecules):
             print(f"Shortening to {len(molecules)}")
             num_molecules_to_visualize = len(molecules)
-        
+
         for i in range(num_molecules_to_visualize):
-            file_path = os.path.join(path, 'molecule_{}.png'.format(i))
+            file_path = os.path.join(path, "molecule_{}.png".format(i))
             mol = self.mol_from_graphs(molecules[i][0].numpy(), molecules[i][1].numpy())
             try:
                 Draw.MolToFile(mol, file_path)

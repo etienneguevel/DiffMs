@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from collections import Counter
 from rdkit import Chem
-from rdkit.Chem import rdMolDescriptors, rdFingerprintGenerator
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem import DataStructs
 from torchmetrics import Metric
 from typing import List
@@ -14,8 +14,12 @@ class K_ACC(Metric):
     def __init__(self, k: int, dist_sync_on_step: bool = False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.k = k
-        self.add_state("correct", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
+        self.add_state(
+            "correct", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum"
+        )
+        self.add_state(
+            "total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum"
+        )
 
     def update(self, generated_inchis: List[str], true_inchi: str):
         if true_inchi in generated_inchis[: self.k]:
@@ -33,6 +37,7 @@ class K_ACC_Collection(Metric):
     """
     A collection of K_ACC metrics for multiple values of k.
     """
+
     def __init__(self, k_list: List[int], dist_sync_on_step: bool = False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.metrics = nn.ModuleDict()
@@ -54,19 +59,21 @@ class K_ACC_Collection(Metric):
     def compute(self):
         return {name: m.compute() for name, m in self.metrics.items()}
 
+
 class K_TanimotoSimilarity(Metric):
     def __init__(self, k: int, dist_sync_on_step: bool = False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.k = k
-        self.add_state("similarity_sum", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
+        self.add_state(
+            "similarity_sum", default=torch.tensor(0.0), dist_reduce_fx="sum"
+        )
+        self.add_state(
+            "total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum"
+        )
 
     def update(self, generated_mols: List[Chem.Mol], true_mol: Chem.Mol):
         # Get the fingerprint
-        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
-            radius=2,
-            fpSize=2048
-        )
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
         true_fp = morgan_gen.GetFingerprint(true_mol)
 
         max_sim = 0.0
@@ -91,14 +98,15 @@ class K_CosineSimilarity(Metric):
     def __init__(self, k: int, dist_sync_on_step: bool = False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.k = k
-        self.add_state("similarity_sum", default=torch.tensor(0.0), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
+        self.add_state(
+            "similarity_sum", default=torch.tensor(0.0), dist_reduce_fx="sum"
+        )
+        self.add_state(
+            "total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum"
+        )
 
     def update(self, generated_mols: List[Chem.Mol], true_mol: Chem.Mol):
-        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
-            radius=2,
-            fpSize=2048
-        )
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
         true_fp = morgan_gen.GetFingerprint(true_mol)
 
         max_sim = 0.0
@@ -123,8 +131,12 @@ class K_SimilarityCollection(Metric):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.metrics = nn.ModuleDict()
         for k in k_list:
-            self.metrics[f"tanimoto_at_{k}"] = K_TanimotoSimilarity(k, dist_sync_on_step=dist_sync_on_step)
-            self.metrics[f"cosine_at_{k}"] = K_CosineSimilarity(k, dist_sync_on_step=dist_sync_on_step)
+            self.metrics[f"tanimoto_at_{k}"] = K_TanimotoSimilarity(
+                k, dist_sync_on_step=dist_sync_on_step
+            )
+            self.metrics[f"cosine_at_{k}"] = K_CosineSimilarity(
+                k, dist_sync_on_step=dist_sync_on_step
+            )
 
     def update(self, generated_mols: List[Chem.Mol], true_mol: Chem.Mol):
         inchis = [Chem.MolToInchi(mol) for mol in generated_mols if is_valid(mol)]
@@ -143,8 +155,12 @@ class K_SimilarityCollection(Metric):
 class Validity(Metric):
     def __init__(self, dist_sync_on_step: bool = False):
         super().__init__(dist_sync_on_step=dist_sync_on_step)
-        self.add_state("valid", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
-        self.add_state("total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum")
+        self.add_state(
+            "valid", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum"
+        )
+        self.add_state(
+            "total", default=torch.tensor(0, dtype=torch.long), dist_reduce_fx="sum"
+        )
 
     def update(self, generated_mols: List[Chem.Mol]):
         for mol in generated_mols:

@@ -3,6 +3,7 @@
 Hold pairwise attention enabled transformers
 
 """
+
 import math
 from typing import Optional, Union, Callable, Tuple
 
@@ -48,6 +49,7 @@ class TransformerEncoderLayer(Module):
         >>> src = torch.rand(32, 10, 512)
         >>> out = encoder_layer(src)
     """
+
     __constants__ = ["batch_first", "norm_first"]
 
     def __init__(
@@ -135,7 +137,6 @@ class TransformerEncoderLayer(Module):
         pairwise_features: Optional[Tensor],
         key_padding_mask: Optional[Tensor],
     ) -> Tensor:
-
         ## Apply joint featurizer
         x = self.self_attn(
             x,
@@ -207,9 +208,9 @@ class MultiheadAttention(Module):
         self.dropout = dropout
         self.batch_first = batch_first
         self.head_dim = embed_dim // num_heads
-        assert (
-            self.head_dim * num_heads == self.embed_dim
-        ), "embed_dim must be divisible by num_heads"
+        assert self.head_dim * num_heads == self.embed_dim, (
+            "embed_dim must be divisible by num_heads"
+        )
         if self.additive_attn:
             head_1_input = (
                 self.head_dim * 3 if self.pairwise_featurization else self.head_dim * 2
@@ -397,20 +398,20 @@ class MultiheadAttention(Module):
         # set up shape vars
         tgt_len, bsz, embed_dim = query.shape
         src_len, _, _ = key.shape
-        assert (
-            embed_dim == embed_dim_to_check
-        ), f"was expecting embedding dimension of {embed_dim_to_check}, but got {embed_dim}"
+        assert embed_dim == embed_dim_to_check, (
+            f"was expecting embedding dimension of {embed_dim_to_check}, but got {embed_dim}"
+        )
         if isinstance(embed_dim, torch.Tensor):
             # embed_dim can be a tensor when JIT tracing
             head_dim = embed_dim.div(num_heads, rounding_mode="trunc")
         else:
             head_dim = embed_dim // num_heads
-        assert (
-            head_dim * num_heads == embed_dim
-        ), f"embed_dim {embed_dim} not divisible by num_heads {num_heads}"
-        assert (
-            key.shape == value.shape
-        ), f"key shape {key.shape} does not match value shape {value.shape}"
+        assert head_dim * num_heads == embed_dim, (
+            f"embed_dim {embed_dim} not divisible by num_heads {num_heads}"
+        )
+        assert key.shape == value.shape, (
+            f"key shape {key.shape} does not match value shape {value.shape}"
+        )
 
         q, k, v = F.linear(query, in_proj_weight, in_proj_bias).chunk(3, dim=-1)
 
@@ -445,7 +446,9 @@ class MultiheadAttention(Module):
             assert key_padding_mask.shape == (
                 bsz,
                 src_len,
-            ), f"expecting key_padding_mask shape of {(bsz, src_len)}, but got {key_padding_mask.shape}"
+            ), (
+                f"expecting key_padding_mask shape of {(bsz, src_len)}, but got {key_padding_mask.shape}"
+            )
             key_padding_mask = (
                 key_padding_mask.view(bsz, 1, 1, src_len)
                 .expand(-1, num_heads, -1, -1)

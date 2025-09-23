@@ -4,6 +4,7 @@ featurizers.py
 Hold featurizers & collate fns for various spectra and molecules in a single
 file
 """
+
 import h5py
 import json
 import logging
@@ -28,15 +29,16 @@ from diffms import ROOT
 from diffms.mist import utils
 from diffms.mist.data import data
 
-ATOM_DECODER = ['C', 'O', 'P', 'N', 'S', 'Cl', 'F', 'H']
+ATOM_DECODER = ["C", "O", "P", "N", "S", "Cl", "F", "H"]
 TYPES = {atom: i for i, atom in enumerate(ATOM_DECODER)}
 BONDS = {BT.SINGLE: 0, BT.DOUBLE: 1, BT.TRIPLE: 2, BT.AROMATIC: 3}
 
 
 def get_mol_featurizer(mol_features, **kwargs):
-    return {"none": NoneFeaturizer, "fingerprint": FingerprintFeaturizer,}[
-        mol_features
-    ](**kwargs)
+    return {
+        "none": NoneFeaturizer,
+        "fingerprint": FingerprintFeaturizer,
+    }[mol_features](**kwargs)
 
 
 def get_spec_featurizer(spec_features, **kwargs):
@@ -67,7 +69,7 @@ def get_paired_featurizer(spec_features, mol_features, **kwargs):
 class PairedFeaturizer(object):
     """PairedFeaturizer"""
 
-    def __init__(self, spec_featurizer, mol_featurizer, graph_featurizer = None, **kwarg):
+    def __init__(self, spec_featurizer, mol_featurizer, graph_featurizer=None, **kwarg):
         """__init__."""
         self.spec_featurizer = spec_featurizer
         self.mol_featurizer = mol_featurizer
@@ -78,7 +80,7 @@ class PairedFeaturizer(object):
 
     def featurize_spec(self, mol: data.Mol, **kwargs) -> Dict:
         return self.spec_featurizer.featurize(mol, **kwargs)
-    
+
     def featurize_graph(self, mol: data.Mol, **kwargs) -> Dict:
         if self.graph_featurizer is not None:
             return self.graph_featurizer.featurize(mol, **kwargs)
@@ -90,7 +92,7 @@ class PairedFeaturizer(object):
 
     def get_spec_collate(self) -> Callable:
         return self.spec_featurizer.collate_fn
-    
+
     def get_graph_collate(self) -> Callable:
         if self.graph_featurizer is not None:
             return self.graph_featurizer.collate_fn
@@ -110,9 +112,7 @@ class PairedFeaturizer(object):
 class Featurizer(ABC):
     """Featurizer"""
 
-    def __init__(
-        self, cache_featurizers: bool = False, **kwargs
-    ):
+    def __init__(self, cache_featurizers: bool = False, **kwargs):
         super().__init__()
         self.cache_featurizers = cache_featurizers
         self.cache = {}
@@ -172,7 +172,8 @@ class SpecFeaturizer(Featurizer):
     def _encode(self, spec: data.Spectra) -> str:
         """Encode spectra into name"""
         return spec.get_spec_name()
-    
+
+
 class GraphFeaturizer(Featurizer):
     """GraphFeaturizer"""
 
@@ -182,18 +183,17 @@ class GraphFeaturizer(Featurizer):
         self.morgan_r = kwargs.get("morgan_r", 2)
         self.morgan_nbits = kwargs.get("morgan_nbits", 2048)
         self.morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
-            radius=self.morgan_r,
-            fpSize=self.morgan_nbits
+            radius=self.morgan_r, fpSize=self.morgan_nbits
         )
 
     def _encode(self, mol: data.Mol) -> str:
         """Encode graph into name"""
         return mol.inchikey
-    
+
     @staticmethod
     def collate_fn(graphs: List[Data]) -> Batch:
         return Batch.from_data_list(graphs)
-    
+
     def _featurize(self, obj: object) -> Data:
         mol = Chem.MolFromSmiles(obj.get_smiles())
         smi = Chem.MolToSmiles(mol, isomericSmiles=False)
@@ -210,14 +210,17 @@ class GraphFeaturizer(Featurizer):
             start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
             row += [start, end]
             col += [end, start]
-            edge_type += 2 * [BONDS[bond.GetBondType()] + 1] # add one so that 0 is reserved for no edge
-
+            edge_type += 2 * [
+                BONDS[bond.GetBondType()] + 1
+            ]  # add one so that 0 is reserved for no edge
 
         edge_index = torch.tensor([row, col], dtype=torch.long)
         edge_type = torch.tensor(edge_type, dtype=torch.long)
         edge_attr = F.one_hot(edge_type, num_classes=len(BONDS) + 1).to(torch.float)
 
-        permutation = (edge_index[0] * N + edge_index[1]).argsort() # sort by row then by column index
+        permutation = (
+            edge_index[0] * N + edge_index[1]
+        ).argsort()  # sort by row then by column index
         edge_index = edge_index[:, permutation]
         edge_attr = edge_attr[permutation]
 
@@ -231,7 +234,6 @@ class GraphFeaturizer(Featurizer):
         data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, y=y, inchi=inchi)
 
         return data
-
 
 
 class FingerprintFeaturizer(MolFeaturizer):
@@ -295,8 +297,7 @@ class FingerprintFeaturizer(MolFeaturizer):
         """get morgan fingeprprint"""
 
         morgan_gen = rdFingerprintGenerator.GetMorganGenerator(
-            radius=radius,
-            fpSize=nbits
+            radius=radius, fpSize=nbits
         )
 
         def fp_fn(m):
@@ -658,7 +659,7 @@ class PeakFormula(SpecFeaturizer):
         inten_prob: float = 0.1,
         cls_type: str = "ms1",
         magma_aux_loss: bool = False,
-        magma_folder: str = None, 
+        magma_folder: str = None,
         forward_aug_folder: str = None,
         max_peaks: int = None,
         inten_transform: str = "float",
@@ -678,7 +679,7 @@ class PeakFormula(SpecFeaturizer):
         self.max_peaks = max_peaks
         self.inten_transform = inten_transform
         self.aug_nbits = magma_modulo
-        
+
         self.spec_name_to_subform_file = {
             i.stem: i for i in list((ROOT / subform_folder).glob("*.json"))
         }
@@ -714,7 +715,7 @@ class PeakFormula(SpecFeaturizer):
                 - root_form
                 - root_ion
         """
-        
+
         spec_name = self._encode(spec)
         subform_file = Path(self.spec_name_to_subform_file[spec_name])
 
@@ -747,7 +748,6 @@ class PeakFormula(SpecFeaturizer):
 
         # If we have a max peaks, then we need to filter
         if self.max_peaks is not None:
-
             # Sort by intensity
             inten_list = list(out_dict["intens"])
 

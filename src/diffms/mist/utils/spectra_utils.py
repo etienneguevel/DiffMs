@@ -1,4 +1,5 @@
-""" spectra_utils.py"""
+"""spectra_utils.py"""
+
 import logging
 import numpy as np
 from typing import List
@@ -29,7 +30,6 @@ def bin_spectra(
     bins = np.linspace(0, upper_limit, num=num_bins)
     binned_spec = np.zeros((len(spectras), len(bins)))
     for spec_index, spec in enumerate(spectras):
-
         # Convert to digitized spectra
         digitized_mz = np.digitize(spec[:, 0], bins=bins)
 
@@ -105,7 +105,7 @@ def process_spec_file(meta, tuples, precision=4, max_inten=0.001, max_peaks=60):
     elif "PEPMASS" in meta:
         parentmass = meta.get("PEPMASS", None)
     else:
-        logging.debug(f"missing parentmass for spec")
+        logging.debug("missing parentmass for spec")
         parentmass = 1000000
 
     parentmass = float(parentmass)
