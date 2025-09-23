@@ -167,7 +167,7 @@ class SpectraMolDataset(Dataset):
         self.smi_arr = np.array([mol.get_smiles() for mol in mol_list])
         self.inchikey_arr = np.array([mol.get_inchikey() for mol in mol_list])
         self.orig_len = len(mol_list)
-        self.len = len(self.mol_list)
+        self.len = len(self.mol_arr)
 
         # Extract all chem formulas
         self.chem_formulas = set()
