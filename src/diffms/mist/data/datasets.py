@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional, List, Tuple, Set, Callable
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import pytorch_lightning as pl
 import torch
@@ -290,7 +289,7 @@ class SpectraMolDataset(Dataset):
             )
             self.len = self.num_to_sample + self.orig_len
 
-    def get_spectra_list(self) -> npt.NDarray[Spectra]:
+    def get_spectra_list(self):
         """get_spectra_list."""
         return self.spectra_arr
 
@@ -306,15 +305,15 @@ class SpectraMolDataset(Dataset):
         """get_spectra_names."""
         return [i.spectra_name for i in self.spectra_arr]
 
-    def get_mol_list(self) -> npt.NDarray[Mol]:
+    def get_mol_list(self) -> np.ndarray:
         """get_mol_list."""
         return self.mol_arr
 
-    def get_smi_list(self) -> npt.NDarray[str]:
+    def get_smi_list(self):
         """Get the smiles list associated with data"""
         return self.smi_arr
 
-    def get_inchikey_list(self) -> npt.NDarray[str]:
+    def get_inchikey_list(self):
         """Get the inchikey list associated with data"""
         return self.inchikey_arr
 

@@ -4,7 +4,7 @@
 
 export_link="https://zenodo.org/records/15008938/files/msg_preprocessed.tar.gz"
 
-mkdir data/
+mkdir -p data/
 cd data/
 
 wget $export_link
