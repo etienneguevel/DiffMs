@@ -6,5 +6,6 @@ do
     mkdir data/fp2mol/$dataset/stats/
 done
 
+source .venv/bin/activate
 cd data_processing/
 python build_fp2mol_datasets.py

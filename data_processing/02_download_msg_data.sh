@@ -7,8 +7,7 @@ export_link="https://zenodo.org/records/15008938/files/msg_preprocessed.tar.gz"
 mkdir -p data/
 cd data/
 
-wget $export_link
+curl $export_link -o msg_preprocessed.tar.gz
 
 tar -xvzf msg_preprocessed.tar.gz
-
 rm -f msg_preprocessed.tar.gz

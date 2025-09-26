@@ -6,7 +6,7 @@
 mkdir -p data/
 
 cd data/
-curl https://zenodo.org/record/8316682/files/canopus_train_export_v2.tar -o canopus_train_export.tar
+curl -L https://zenodo.org/record/8316682/files/canopus_train_export_v2.tar -o canopus_train_export.tar
 
 tar -xvf canopus_train_export.tar
 mv canopus_train_export canopus
